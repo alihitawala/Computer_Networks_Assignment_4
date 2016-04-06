@@ -71,18 +71,37 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	TimerTask task = new TimerTask() {
 		@Override
 		public void run() {
+			Map<Pair, Path> aggregatedPath = new HashMap<Pair, Path>();
 			for (Long l : getSwitches().keySet()) {
 				IOFSwitch iofSwitch = getSwitches().get(l);
-				List<Path> paths = new BellmanFord(getHosts(), getSwitches(), getLinks()).start(iofSwitch);
-				for (Path path : paths) {
-					System.out.println(path.getSrcSwitchId() + " -> " + path.getDestSwitchId());
-					for (Link link : path.getLinks()) {
-						System.out.print(link.getSrc() + " -> " + link.getDst());
-					}
-					System.out.println();
-				}
-				System.out.println();
+				Map<Pair, Path> pairPathMap = new BellmanFord(getHosts(), getSwitches(), getLinks()).start(iofSwitch);
+				aggregatedPath.putAll(pairPathMap);
+//				for (Path path : paths) {
+//					System.out.println("source -> destination :: " + path.getSrcSwitchId() + " -> " + path.getDestSwitchId());
+//					System.out.println("Printing Paths");
+//					for (Link link : path.getLinks()) {
+//						System.out.print(link.getSrc() + " -> " + link.getDst());
+//					}
+//					System.out.println();
+//					System.out.println("Path printing ended");
+//					System.out.println();
+//				}
+//				System.out.println();
 			}
+			for (Host srcHost : getHosts()) {
+				for (Host destHost : getHosts()) {
+					if (!srcHost.equals(destHost)) {
+						Pair pair = new Pair(srcHost.getSwitch().getId(), destHost.getSwitch().getId());
+						Path path = aggregatedPath.get(pair);
+						System.out.println("Path between host :: " + srcHost.getID() + "-->" + destHost.getID());
+						for (Link link : path.getLinks()) {
+							System.out.println("Path :: " + link.getSrc() + "-->" + link.getDst());
+						}
+						System.out.println("END");
+					}
+				}
+			}
+
 		}
 	};
 

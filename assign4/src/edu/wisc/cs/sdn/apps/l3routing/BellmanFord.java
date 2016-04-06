@@ -54,12 +54,12 @@ public class BellmanFord {
         }
     }
 
-    public List<Path> start(IOFSwitch iofSwitch) {
+    public Map<Pair, Path> start(IOFSwitch iofSwitch) {
         long src = (int) iofSwitch.getId();
         constructInternalDS();
         int V = this.switches.size();
         int E = this.links.size();
-        List<Path> result = new ArrayList<Path>();
+        Map<Pair, Path> result = new HashMap<Pair, Path>();
         Map<Long, Integer> distMap = new HashMap<Long, Integer>();
         Map<Long, Long> predMap = new HashMap<Long, Long>();
         Map<Long, Link> predLinkMap = new HashMap<Long, Link>();
@@ -86,6 +86,7 @@ public class BellmanFord {
         for (Long switchId : this.switches.keySet()) {
             if (switchId != src) {
                 long destSwitchId = switchId;
+                Pair pair = new Pair(destSwitchId, src);
                 Path path = new Path();
                 path.setDestSwitchId(destSwitchId);
                 path.setSrcSwitchId(src);
@@ -94,9 +95,46 @@ public class BellmanFord {
                     path.getLinks().add(0, predLinkMap.get(v));
                     destSwitchId = predMap.get(destSwitchId);
                 } while (destSwitchId != src);
-                result.add(path);
+                result.put(pair, path);
             }
         }
+        return result;
+    }
+}
+
+class Pair {
+    private final Long srcSwitchId;
+    private final Long destSwitchId;
+
+    public Pair(Long srcSwitchId, Long destSwitchId) {
+        this.srcSwitchId = srcSwitchId;
+        this.destSwitchId = destSwitchId;
+    }
+
+    public Long getSrcSwitchId() {
+        return srcSwitchId;
+    }
+
+    public Long getDestSwitchId() {
+        return destSwitchId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Pair pair = (Pair) o;
+
+        if (!srcSwitchId.equals(pair.srcSwitchId)) return false;
+        return destSwitchId.equals(pair.destSwitchId);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = srcSwitchId.hashCode();
+        result = 31 * result + destSwitchId.hashCode();
         return result;
     }
 }
@@ -107,7 +145,7 @@ class Path {
     List<Link> links;
 
     public Path() {
-        links = new ArrayList<Link>();
+        links = new LinkedList<Link>();
     }
 
     public Long getSrcSwitchId() {
