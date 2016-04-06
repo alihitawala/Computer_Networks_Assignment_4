@@ -98,7 +98,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		this.linkDiscProv.addListener(this);
 		this.deviceProv.addListener(this);
 		Timer timer = new Timer();
-		timer.scheduleAtFixedRate(task, 100000, 100000);
+		timer.scheduleAtFixedRate(task, 30000, 30000);
 		/*********************************************************************/
 		/* TODO: Initialize variables or perform startup tasks, if necessary */
 		
