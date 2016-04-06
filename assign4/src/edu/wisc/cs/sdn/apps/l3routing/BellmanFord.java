@@ -86,10 +86,10 @@ public class BellmanFord {
         for (Long switchId : this.switches.keySet()) {
             if (switchId != src) {
                 long destSwitchId = switchId;
-                Pair pair = new Pair(destSwitchId, src);
+                Pair pair = new Pair(src, destSwitchId);
                 Path path = new Path();
-                path.setDestSwitchId(destSwitchId);
                 path.setSrcSwitchId(src);
+                path.setDestSwitchId(destSwitchId);
                 do {
                     long v = destSwitchId;
                     path.getLinks().add(0, predLinkMap.get(v));
@@ -98,6 +98,12 @@ public class BellmanFord {
                 result.put(pair, path);
             }
         }
+        //dummy entry src to src
+        Pair pair = new Pair(src, src);
+        Path path = new Path();
+        path.setDestSwitchId(src);
+        path.setSrcSwitchId(src);
+        result.put(pair, path);
         return result;
     }
 }
