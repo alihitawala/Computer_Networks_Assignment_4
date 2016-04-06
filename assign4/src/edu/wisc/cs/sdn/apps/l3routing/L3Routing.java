@@ -1,10 +1,6 @@
 package edu.wisc.cs.sdn.apps.l3routing;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -51,6 +47,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
     // Map of hosts to devices
     private Map<IDevice,Host> knownHosts;
 
+	private BellmanFord bellmanFord;
+
 	/**
      * Loads dependencies and initializes data structures.
      */
@@ -70,6 +68,24 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
         this.knownHosts = new ConcurrentHashMap<IDevice,Host>();
 	}
 
+	TimerTask task = new TimerTask() {
+		@Override
+		public void run() {
+			for (Long l : getSwitches().keySet()) {
+				IOFSwitch iofSwitch = getSwitches().get(l);
+				List<Path> paths = new BellmanFord(getHosts(), getSwitches(), getLinks()).start(iofSwitch);
+				for (Path path : paths) {
+					System.out.println(path.getSrcSwitchId() + " -> " + path.getDestSwitchId());
+					for (Link link : path.getLinks()) {
+						System.out.print(link.getSrc() + " -> " + link.getDst());
+					}
+					System.out.println();
+				}
+				System.out.println();
+			}
+		}
+	};
+
 	/**
      * Subscribes to events and performs other startup tasks.
      */
@@ -81,7 +97,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		this.floodlightProv.addOFSwitchListener(this);
 		this.linkDiscProv.addListener(this);
 		this.deviceProv.addListener(this);
-		
+		Timer timer = new Timer();
+		timer.scheduleAtFixedRate(task, 100000, 100000);
 		/*********************************************************************/
 		/* TODO: Initialize variables or perform startup tasks, if necessary */
 		
@@ -179,7 +196,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	
     /**
      * Event handler called when a switch joins the network.
-     * @param DPID for the switch
+     * @param switchId for the switch
      */
 	@Override		
 	public void switchAdded(long switchId) 
@@ -195,7 +212,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 
 	/**
 	 * Event handler called when a switch leaves the network.
-	 * @param DPID for the switch
+	 * @param switchId for the switch
 	 */
 	@Override
 	public void switchRemoved(long switchId) 
@@ -266,7 +283,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	
 	/**
 	 * Event handler called when the controller becomes the master for a switch.
-	 * @param DPID for the switch
+	 * @param switchId for the switch
 	 */
 	@Override
 	public void switchActivated(long switchId) 
@@ -274,7 +291,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 
 	/**
 	 * Event handler called when some attribute of a switch changes.
-	 * @param DPID for the switch
+	 * @param switchId for the switch
 	 */
 	@Override
 	public void switchChanged(long switchId) 
@@ -283,7 +300,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	/**
 	 * Event handler called when a port on a switch goes up or down, or is
 	 * added or removed.
-	 * @param DPID for the switch
+	 * @param switchId for the switch
 	 * @param port the port on the switch whose status changed
 	 * @param type the type of status change (up, down, add, remove)
 	 */

@@ -22,6 +22,10 @@ public class Host
 		this.device = device;
 		this.floodlightProv = floodlightProv;
 	}
+
+	public long getID() {
+		return this.device.getDeviceKey();
+	}
 	
 	/**
 	 * Get the host's name (assuming a host's name corresponds to its MAC address).
