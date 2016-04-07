@@ -47,8 +47,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
     // Map of hosts to devices
     private Map<IDevice,Host> knownHosts;
 
-	private BellmanFord bellmanFord;
-
+	private RuleEngine ruleEngine;
 	/**
      * Loads dependencies and initializes data structures.
      */
@@ -71,7 +70,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	TimerTask task = new TimerTask() {
 		@Override
 		public void run() {
-			new RuleEngine(getHosts(), getSwitches(), getLinks()).applyRuleToAllHosts();
+			ruleEngine.applyRuleToAllHosts(getHosts(), getSwitches(), getLinks());
 		}
 	};
 
@@ -86,8 +85,9 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		this.floodlightProv.addOFSwitchListener(this);
 		this.linkDiscProv.addListener(this);
 		this.deviceProv.addListener(this);
-		Timer timer = new Timer();
-		timer.scheduleAtFixedRate(task, 30000, 30000);
+		this.ruleEngine = new RuleEngine(getHosts(), getSwitches(), getLinks());
+//		Timer timer = new Timer();
+//		timer.scheduleAtFixedRate(task, 30000, 30000);
 		/*********************************************************************/
 		/* TODO: Initialize variables or perform startup tasks, if necessary */
 		
@@ -126,7 +126,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		{
 			log.info(String.format("Host %s added", host.getName()));
 			this.knownHosts.put(device, host);
-			
+			this.ruleEngine.applyRuleToAddSrcHost(this.getHosts(), host);
 			/*****************************************************************/
 			/* TODO: Update routing: add rules to route to new host          */
 			
@@ -192,7 +192,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	{
 		IOFSwitch sw = this.floodlightProv.getSwitch(switchId);
 		log.info(String.format("Switch s%d added", switchId));
-		
+		this.ruleEngine.applyRuleToAllHosts(getHosts(), getSwitches(), getLinks());
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
 		
@@ -208,7 +208,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	{
 		IOFSwitch sw = this.floodlightProv.getSwitch(switchId);
 		log.info(String.format("Switch s%d removed", switchId));
-		
+		this.ruleEngine.applyRuleToAllHosts(getHosts(), getSwitches(), getLinks());
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
 		
@@ -239,7 +239,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 					update.getDst(), update.getDstPort()));
 			}
 		}
-		
+		this.ruleEngine.applyRuleToAllHosts(this.getHosts(), this.getSwitches(), this.getLinks());
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
 		
@@ -285,7 +285,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	@Override
 	public void switchChanged(long switchId) 
 	{ /* Nothing we need to do */ }
-	
+
 	/**
 	 * Event handler called when a port on a switch goes up or down, or is
 	 * added or removed.
@@ -295,7 +295,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	 */
 	@Override
 	public void switchPortChanged(long switchId, ImmutablePort port,
-			PortChangeType type) 
+			PortChangeType type)
 	{ /* Nothing we need to do, since we'll get a linkDiscoveryUpdate event */ }
 
 	/**
@@ -303,7 +303,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	 * @return name for this module
 	 */
 	@Override
-	public String getName() 
+	public String getName()
 	{ return this.MODULE_NAME; }
 
 	/**

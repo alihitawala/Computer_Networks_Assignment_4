@@ -25,6 +25,7 @@ public class RuleEngine {
     private Collection<Host> hosts;
     private Map<Long, IOFSwitch> switches;
     private Collection<Link> links;
+    private Map<Pair, Path> pathDiscoveries;
 
     public RuleEngine(Collection<Host> hosts, Map<Long, IOFSwitch> switches, Collection<Link> links) {
         this.hosts = hosts;
@@ -32,32 +33,53 @@ public class RuleEngine {
         this.links = links;
     }
 
-    public void applyRuleToAllHosts() {
-        Map<Pair, Path> aggregatedPath = new BellmanFord(this.hosts, this.switches, this.links).startOnAll();
+    public synchronized void applyRuleToAllHosts(Collection<Host> h, Map<Long, IOFSwitch> s, Collection<Link> l) {
+        this.hosts = h;
+        this.switches = s;
+        this.links = l;
+        pathDiscoveries = new BellmanFord(this.hosts, this.switches, this.links).startOnAll();
         for (Host srcHost : this.hosts) {
-            for (Host destHost : this.hosts) {
-                if (!srcHost.equals(destHost)) {
-                    Pair pair = new Pair(srcHost.getSwitch().getId(), destHost.getSwitch().getId());
-                    if (!aggregatedPath.containsKey(pair)) {
-                        //todo error handling
-                        continue;
-                    }
-                    Path path = aggregatedPath.get(pair);
-                    System.out.println("Path between host :: " + srcHost.getName() + "-->" + destHost.getName());
-                    Long lastSwitchId = destHost.getSwitch().getId();
-                    for (Link link : path.getLinks()) {
-                        System.out.println("Path :: " + link.getSrc() + "-->" + link.getDst());
-                        installRule(destHost, link.getSrc(), link.getSrcPort());
-                        lastSwitchId = link.getDst();
-                    }
-                    installRule(destHost, lastSwitchId, destHost.getPort());
-                    System.out.println("END");
-                }
-            }
+            this.applyRuleToSrcHost(srcHost);
         }
     }
 
-    private void installRule(Host destHost, Long switchId, int switchOutputPort) {
+    public synchronized void applyRuleToAddSrcHost(Collection<Host> h, Host srcHost) {
+        this.hosts = h;
+        this.applyRuleToSrcHost(srcHost);
+        for (Host otherSrcHost : this.hosts) {
+            if (!otherSrcHost.equals(srcHost))
+                this.updatePathBetweenHosts(otherSrcHost, srcHost);
+        }
+    }
+
+    private synchronized void applyRuleToSrcHost(Host srcHost) {
+        for (Host destHost : this.hosts) {
+            if (!srcHost.equals(destHost))
+                updatePathBetweenHosts(srcHost, destHost);
+        }
+    }
+
+    private synchronized void updatePathBetweenHosts(Host srcHost, Host destHost) {
+        if (srcHost.getSwitch() == null || destHost.getSwitch() == null)
+            return;
+        Pair pair = new Pair(srcHost.getSwitch().getId(), destHost.getSwitch().getId());
+        if (!this.pathDiscoveries.containsKey(pair)) {
+            //todo error handling
+            return;
+        }
+        Path path = this.pathDiscoveries.get(pair);
+        System.out.println("Path between host :: " + srcHost.getName() + "-->" + destHost.getName());
+        Long lastSwitchId = destHost.getSwitch().getId();
+        for (Link link : path.getLinks()) {
+            System.out.println("Path :: " + link.getSrc() + "-->" + link.getDst());
+            installRule(destHost, link.getSrc(), link.getSrcPort());
+            lastSwitchId = link.getDst();
+        }
+        installRule(destHost, lastSwitchId, destHost.getPort());
+        System.out.println("END");
+    }
+
+    private synchronized void installRule(Host destHost, Long switchId, int switchOutputPort) {
         OFMatch match = new OFMatch();
         OFMatchField field1 = new OFMatchField(OFOXMFieldType.ETH_TYPE, Ethernet.TYPE_IPv4);
         OFMatchField field2 = new OFMatchField(OFOXMFieldType.IPV4_DST, destHost.getIPv4Address());
