@@ -70,7 +70,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	TimerTask task = new TimerTask() {
 		@Override
 		public void run() {
-			ruleEngine.applyRuleToAllHosts(getHosts(), getSwitches(), getLinks());
+			ruleEngine.applyRuleToAddAllHosts(getHosts(), getSwitches(), getLinks());
 		}
 	};
 
@@ -146,9 +146,9 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		{ return; }
 		this.knownHosts.remove(host);
 		
-		log.info(String.format("Host %s is no longer attached to a switch", 
+		log.info(String.format("Host %s is no longer attached to a switch",
 				host.getName()));
-		
+		this.ruleEngine.applyRuleToAddAllHosts(getHosts(), getSwitches(), getLinks());
 		/*********************************************************************/
 		/* TODO: Update routing: remove rules to route to host               */
 		
@@ -176,7 +176,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		}
 		log.info(String.format("Host %s moved to s%d:%d", host.getName(),
 				host.getSwitch().getId(), host.getPort()));
-		
+		this.ruleEngine.applyRuleToAddAllHosts(getHosts(), getSwitches(), getLinks());
 		/*********************************************************************/
 		/* TODO: Update routing: change rules to route to host               */
 		
@@ -192,7 +192,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	{
 		IOFSwitch sw = this.floodlightProv.getSwitch(switchId);
 		log.info(String.format("Switch s%d added", switchId));
-		this.ruleEngine.applyRuleToAllHosts(getHosts(), getSwitches(), getLinks());
+		this.ruleEngine.applyRuleToAddAllHosts(getHosts(), getSwitches(), getLinks());
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
 		
@@ -208,7 +208,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	{
 		IOFSwitch sw = this.floodlightProv.getSwitch(switchId);
 		log.info(String.format("Switch s%d removed", switchId));
-		this.ruleEngine.applyRuleToAllHosts(getHosts(), getSwitches(), getLinks());
+		this.ruleEngine.applyRuleToAddAllHosts(getHosts(), getSwitches(), getLinks());
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
 		
@@ -239,7 +239,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 					update.getDst(), update.getDstPort()));
 			}
 		}
-		this.ruleEngine.applyRuleToAllHosts(this.getHosts(), this.getSwitches(), this.getLinks());
+		this.ruleEngine.applyRuleToAddAllHosts(this.getHosts(), this.getSwitches(), this.getLinks());
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
 		

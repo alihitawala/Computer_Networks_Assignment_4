@@ -27,39 +27,59 @@ public class RuleEngine {
     private Collection<Link> links;
     private Map<Pair, Path> pathDiscoveries;
 
+    private enum RULE_TYPE {
+        ADD, REMOVE
+    }
+
     public RuleEngine(Collection<Host> hosts, Map<Long, IOFSwitch> switches, Collection<Link> links) {
         this.hosts = hosts;
         this.switches = switches;
         this.links = links;
     }
 
-    public synchronized void applyRuleToAllHosts(Collection<Host> h, Map<Long, IOFSwitch> s, Collection<Link> l) {
+    public synchronized void applyRuleToAddAllHosts(Collection<Host> h, Map<Long, IOFSwitch> s, Collection<Link> l) {
         this.hosts = h;
         this.switches = s;
         this.links = l;
         pathDiscoveries = new BellmanFord(this.hosts, this.switches, this.links).startOnAll();
         for (Host srcHost : this.hosts) {
-            this.applyRuleToSrcHost(srcHost);
+            this.addPathFromSrcToAllHost(srcHost);
+        }
+    }
+
+    public synchronized void applyRuleToRemoveSrcHost(Collection<Host> h, Host srcHost) {
+        this.hosts = h;
+//        this.removePathFromSrcToAllHost(srcHost);
+        for (Host otherSrcHost : this.hosts) {
+            if (!otherSrcHost.equals(srcHost))
+                this.updatePathBetweenHosts(otherSrcHost, srcHost, RULE_TYPE.REMOVE);
         }
     }
 
     public synchronized void applyRuleToAddSrcHost(Collection<Host> h, Host srcHost) {
         this.hosts = h;
-        this.applyRuleToSrcHost(srcHost);
+        this.addPathFromSrcToAllHost(srcHost);
         for (Host otherSrcHost : this.hosts) {
             if (!otherSrcHost.equals(srcHost))
-                this.updatePathBetweenHosts(otherSrcHost, srcHost);
+                this.updatePathBetweenHosts(otherSrcHost, srcHost, RULE_TYPE.ADD);
         }
     }
 
-    private synchronized void applyRuleToSrcHost(Host srcHost) {
+    private synchronized void removePathFromSrcToAllHost(Host srcHost) {
         for (Host destHost : this.hosts) {
             if (!srcHost.equals(destHost))
-                updatePathBetweenHosts(srcHost, destHost);
+                updatePathBetweenHosts(srcHost, destHost, RULE_TYPE.REMOVE);
         }
     }
 
-    private synchronized void updatePathBetweenHosts(Host srcHost, Host destHost) {
+    private synchronized void addPathFromSrcToAllHost(Host srcHost) {
+        for (Host destHost : this.hosts) {
+            if (!srcHost.equals(destHost))
+                updatePathBetweenHosts(srcHost, destHost, RULE_TYPE.ADD);
+        }
+    }
+
+    private synchronized void updatePathBetweenHosts(Host srcHost, Host destHost, RULE_TYPE ruleType) {
         if (srcHost.getSwitch() == null || destHost.getSwitch() == null)
             return;
         Pair pair = new Pair(srcHost.getSwitch().getId(), destHost.getSwitch().getId());
@@ -72,14 +92,14 @@ public class RuleEngine {
         Long lastSwitchId = destHost.getSwitch().getId();
         for (Link link : path.getLinks()) {
             System.out.println("Path :: " + link.getSrc() + "-->" + link.getDst());
-            installRule(destHost, link.getSrc(), link.getSrcPort());
+            applyRuleToDevice(destHost, link.getSrc(), link.getSrcPort(), ruleType);
             lastSwitchId = link.getDst();
         }
-        installRule(destHost, lastSwitchId, destHost.getPort());
+        applyRuleToDevice(destHost, lastSwitchId, destHost.getPort(), ruleType);
         System.out.println("END");
     }
 
-    private synchronized void installRule(Host destHost, Long switchId, int switchOutputPort) {
+    private synchronized void applyRuleToDevice(Host destHost, Long switchId, int switchOutputPort, RULE_TYPE ruleType) {
         OFMatch match = new OFMatch();
         OFMatchField field1 = new OFMatchField(OFOXMFieldType.ETH_TYPE, Ethernet.TYPE_IPv4);
         OFMatchField field2 = new OFMatchField(OFOXMFieldType.IPV4_DST, destHost.getIPv4Address());
@@ -93,6 +113,9 @@ public class RuleEngine {
         OFInstructionApplyActions applyActions = new OFInstructionApplyActions(actions);
         List<OFInstruction> instructions = new ArrayList<OFInstruction>();
         instructions.add(applyActions);
-        SwitchCommands.installRule(this.switches.get(switchId), L3Routing.table, SwitchCommands.DEFAULT_PRIORITY, match, instructions);
+        if (ruleType == RULE_TYPE.ADD)
+            SwitchCommands.installRule(this.switches.get(switchId), L3Routing.table, SwitchCommands.DEFAULT_PRIORITY, match, instructions);
+        else
+            SwitchCommands.removeRules(this.switches.get(switchId), L3Routing.table, match);
     }
 }
