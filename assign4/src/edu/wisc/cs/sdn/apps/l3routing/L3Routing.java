@@ -126,7 +126,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		{
 			log.info(String.format("Host %s added", host.getName()));
 			this.knownHosts.put(device, host);
-			this.ruleEngine.applyRuleToAddSrcHost(this.getHosts(), host);
+			this.ruleEngine.applyRuleToAddAllHosts(getHosts(), getSwitches(), getLinks());
 			/*****************************************************************/
 			/* TODO: Update routing: add rules to route to new host          */
 			
