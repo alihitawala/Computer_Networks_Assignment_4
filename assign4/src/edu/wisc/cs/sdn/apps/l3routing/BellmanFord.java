@@ -15,18 +15,12 @@ public class BellmanFord {
     private Collection<Link> _links;
     private List<Link> links;
 
-    private Map<Long, List<Long>> switchToHosts;
-    private Map<Long, Host> hostIdToHost;
-
     public BellmanFord(Collection<Host> hosts, Map<Long, IOFSwitch> switches, Collection<Link> links) {
         this.hosts = hosts;
         this.switches = switches;
         this._links = links;
-        hostIdToHost = new HashMap<Long, Host>();
-        switchToHosts = new HashMap<Long, List<Long>>();
     }
 
-    //todo check
     private List<Link> getLinkSet(Collection<Link> links) {
         Set<Link> result = new HashSet<Link>();
         for (Link link: links) {
@@ -37,21 +31,17 @@ public class BellmanFord {
     }
 
     private void constructInternalDS() {
-        hostIdToHost.clear();
-        switchToHosts.clear();
         this.links = getLinkSet(_links);
-        for (Host host : hosts) {
-            hostIdToHost.put(host.getID(), host);
-            long switchId = host.getSwitch().getId();
-            if (switchToHosts.containsKey(switchId)) {
-                switchToHosts.get(switchId).add(host.getID());
-            }
-            else {
-                List<Long> hostIds = new ArrayList<Long>();
-                hostIds.add(host.getID());
-                switchToHosts.put(switchId, hostIds);
-            }
+    }
+
+    public Map<Pair, Path> startOnAll() {
+        Map<Pair, Path> aggregatedPath = new HashMap<Pair, Path>();
+        for (Long l : this.switches.keySet()) {
+            IOFSwitch iofSwitch = this.switches.get(l);
+            Map<Pair, Path> pairPathMap = start(iofSwitch);
+            aggregatedPath.putAll(pairPathMap);
         }
+        return aggregatedPath;
     }
 
     public Map<Pair, Path> start(IOFSwitch iofSwitch) {
