@@ -56,6 +56,8 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
     // Set of virtual IPs and the load balancer instances they correspond with
     private Map<Integer,LoadBalancerInstance> instances;
 
+	private LoadBalancerHandlePacket loadBalancerHandlePacket;
+	private LoadBalancerRuleEngine loadBalancerRuleEngine;
     /**
      * Loads dependencies and initializes data structures.
      */
@@ -89,8 +91,9 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		this.floodlightProv = context.getServiceImpl(
 				IFloodlightProviderService.class);
         this.deviceProv = context.getServiceImpl(IDeviceService.class);
-        
-        /*********************************************************************/
+		this.loadBalancerRuleEngine = new LoadBalancerRuleEngine(this.instances, this.table);
+		this.loadBalancerHandlePacket = new LoadBalancerHandlePacket(this.instances, this, this.loadBalancerRuleEngine);
+		/*********************************************************************/
         /* TODO: Initialize other class variables, if necessary              */
         
         /*********************************************************************/
@@ -115,14 +118,16 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 	
 	/**
      * Event handler called when a switch joins the network.
-     * @param DPID for the switch
+     * @param switchId for the switch
      */
 	@Override
 	public void switchAdded(long switchId) 
 	{
 		IOFSwitch sw = this.floodlightProv.getSwitch(switchId);
 		log.info(String.format("Switch s%d added", switchId));
-		
+		this.loadBalancerRuleEngine.addARPRule(sw);
+		this.loadBalancerRuleEngine.addVirtualIPRule(sw);
+		this.loadBalancerRuleEngine.addDefaultRule(sw);
 		/*********************************************************************/
 		/* TODO: Install rules to send:                                      */
 		/*       (1) packets from new connections to each virtual load       */
@@ -153,7 +158,10 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		Ethernet ethPkt = new Ethernet();
 		ethPkt.deserialize(pktIn.getPacketData(), 0,
 				pktIn.getPacketData().length);
-		
+		if (this.loadBalancerHandlePacket.isARPPacket(ethPkt))
+			this.loadBalancerHandlePacket.handleARPPacket(pktIn, ethPkt, sw);
+		if (this.loadBalancerHandlePacket.isIPPacket(ethPkt))
+			this.loadBalancerHandlePacket.handleIPPacket(pktIn, ethPkt, sw);
 		/*********************************************************************/
 		/* TODO: Send an ARP reply for ARP requests for virtual IPs; for TCP */
 		/*       SYNs sent to a virtual IP, select a host and install        */
@@ -172,7 +180,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 	 * @param hostIPAddress the host's IP address
 	 * @return the hosts's MAC address, null if unknown
 	 */
-	private byte[] getHostMACAddress(int hostIPAddress)
+	public byte[] getHostMACAddress(int hostIPAddress)
 	{
 		Iterator<? extends IDevice> iterator = this.deviceProv.queryDevices(
 				null, null, hostIPAddress, null, null);
@@ -184,7 +192,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 
 	/**
 	 * Event handler called when a switch leaves the network.
-	 * @param DPID for the switch
+	 * @param switchId for the switch
 	 */
 	@Override
 	public void switchRemoved(long switchId) 
@@ -192,7 +200,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 
 	/**
 	 * Event handler called when the controller becomes the master for a switch.
-	 * @param DPID for the switch
+	 * @param switchId for the switch
 	 */
 	@Override
 	public void switchActivated(long switchId)
@@ -201,7 +209,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 	/**
 	 * Event handler called when a port on a switch goes up or down, or is
 	 * added or removed.
-	 * @param DPID for the switch
+	 * @param switchId for the switch
 	 * @param port the port on the switch whose status changed
 	 * @param type the type of status change (up, down, add, remove)
 	 */
@@ -212,7 +220,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 
 	/**
 	 * Event handler called when some attribute of a switch changes.
-	 * @param DPID for the switch
+	 * @param switchId for the switch
 	 */
 	@Override
 	public void switchChanged(long switchId) 
