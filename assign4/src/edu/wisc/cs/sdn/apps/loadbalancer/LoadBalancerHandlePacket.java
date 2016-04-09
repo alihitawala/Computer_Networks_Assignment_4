@@ -26,18 +26,13 @@ public class LoadBalancerHandlePacket {
     private static Logger log = LoggerFactory.getLogger(MODULE_NAME);
 
     private Map<Integer,LoadBalancerInstance> instances;
-    private int instanceNumber;
     private LoadBalancer loadBalancer;
-    private List<Integer> instanceList = new ArrayList<Integer>();
     private LoadBalancerRuleEngine loadBalancerRuleEngine;
 
     public LoadBalancerHandlePacket(Map<Integer, LoadBalancerInstance> instances, LoadBalancer loadBalancer, LoadBalancerRuleEngine loadBalancerRuleEngine) {
         this.loadBalancer = loadBalancer;
         this.loadBalancerRuleEngine = loadBalancerRuleEngine;
         this.instances = instances;
-        this.instanceNumber = 0;
-        for (int ip : this.instances.keySet())
-            instanceList.add(ip);
     }
 
     public void handleARPPacket(OFPacketIn pktIn, Ethernet eth, IOFSwitch sw) {
@@ -65,7 +60,7 @@ public class LoadBalancerHandlePacket {
         SwitchCommands.sendPacket(sw, (short) pktIn.getInPort(), eth);
     }
 
-    public void handleIPPacket(OFPacketIn pktIn, Ethernet eth, IOFSwitch sw) {
+    public void handleIPPacket(OFPacketIn pktIn, Ethernet eth, IOFSwitch sw, List<IOFSwitch> switches) {
         if (eth.getEtherType() != Ethernet.TYPE_IPv4)
             return;
         IPv4 ipv4 = (IPv4) eth.getPayload();
@@ -77,8 +72,11 @@ public class LoadBalancerHandlePacket {
         int sourceIp = ipv4.getSourceAddress();
         LoadBalancerInstance instance = this.instances.get(ipv4.getDestinationAddress());
         int hostIp = instance.getNextHostIP();
+        System.out.println("\nNEXT HOP ID Obtained:: " + hostIp);
         byte[] hostMACAddress = this.loadBalancer.getHostMACAddress(hostIp);
-        this.loadBalancerRuleEngine.addReRoutingRule(sw, sourceIp, instance, hostIp, hostMACAddress, sourcePort, destinationPort);
+        System.out.println("\nNEXT HOP MAC ID Obtained:: " + hostMACAddress.toString());
+        for (IOFSwitch s : switches)
+            this.loadBalancerRuleEngine.addReRoutingRule(s, sourceIp, instance, hostIp, hostMACAddress, sourcePort, destinationPort);
         SwitchCommands.sendPacket(sw, (short) pktIn.getInPort(), eth);
     }
 

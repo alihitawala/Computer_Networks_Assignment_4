@@ -1,10 +1,6 @@
 package edu.wisc.cs.sdn.apps.loadbalancer;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
@@ -58,6 +54,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 
 	private LoadBalancerHandlePacket loadBalancerHandlePacket;
 	private LoadBalancerRuleEngine loadBalancerRuleEngine;
+	private List<IOFSwitch> switches;
     /**
      * Loads dependencies and initializes data structures.
      */
@@ -93,6 +90,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
         this.deviceProv = context.getServiceImpl(IDeviceService.class);
 		this.loadBalancerRuleEngine = new LoadBalancerRuleEngine(this.instances, this.table);
 		this.loadBalancerHandlePacket = new LoadBalancerHandlePacket(this.instances, this, this.loadBalancerRuleEngine);
+		this.switches = new ArrayList<IOFSwitch>();
 		/*********************************************************************/
         /* TODO: Initialize other class variables, if necessary              */
         
@@ -124,6 +122,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 	public void switchAdded(long switchId) 
 	{
 		IOFSwitch sw = this.floodlightProv.getSwitch(switchId);
+		this.switches.add(sw);
 		log.info(String.format("Switch s%d added", switchId));
 		this.loadBalancerRuleEngine.addARPRule(sw);
 		this.loadBalancerRuleEngine.addVirtualIPRule(sw);
@@ -161,7 +160,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		if (this.loadBalancerHandlePacket.isARPPacket(ethPkt))
 			this.loadBalancerHandlePacket.handleARPPacket(pktIn, ethPkt, sw);
 		if (this.loadBalancerHandlePacket.isIPPacket(ethPkt))
-			this.loadBalancerHandlePacket.handleIPPacket(pktIn, ethPkt, sw);
+			this.loadBalancerHandlePacket.handleIPPacket(pktIn, ethPkt, sw, this.switches);
 		/*********************************************************************/
 		/* TODO: Send an ARP reply for ARP requests for virtual IPs; for TCP */
 		/*       SYNs sent to a virtual IP, select a host and install        */
