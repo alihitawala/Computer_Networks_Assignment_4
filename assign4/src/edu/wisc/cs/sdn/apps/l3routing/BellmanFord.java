@@ -55,6 +55,7 @@ public class BellmanFord {
         Map<Long, Integer> distMap = new HashMap<Long, Integer>();
         Map<Long, Long> predMap = new HashMap<Long, Long>();
         Map<Long, Link> predLinkMap = new HashMap<Long, Link>();
+        Map<Long, Boolean> reachable = new HashMap<Long, Boolean>();
         for (Long key : this.switchIds) {
             distMap.put(key, Integer.MAX_VALUE);
             predMap.put(key, (long)-1);
@@ -72,11 +73,13 @@ public class BellmanFord {
                     distMap.put(v, distMap.get(u) + weight);
                     predMap.put(v, u);
                     predLinkMap.put(v, currentLink);
+                    reachable.put(u, true);
+                    reachable.put(v, true);
                 }
             }
         }
         for (Long switchId : this.switchIds) {
-            if (switchId != src) {
+            if (switchId != src && reachable.get(switchId)) {
                 long destSwitchId = switchId;
                 Pair pair = new Pair(src, destSwitchId);
                 Path path = new Path();
