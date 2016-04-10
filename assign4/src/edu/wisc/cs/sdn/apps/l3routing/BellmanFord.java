@@ -11,13 +11,14 @@ import java.util.*;
  */
 public class BellmanFord {
     private Collection<Host> hosts;
-    private Map<Long, IOFSwitch> switches;
+    private Map<Long, IOFSwitch> _switches;
     private Collection<Link> _links;
+    private Collection<Long> switchIds;
     private List<Link> links;
 
     public BellmanFord(Collection<Host> hosts, Map<Long, IOFSwitch> switches, Collection<Link> links) {
         this.hosts = hosts;
-        this.switches = switches;
+        this._switches = switches;
         this._links = links;
     }
 
@@ -31,13 +32,15 @@ public class BellmanFord {
     }
 
     private void constructInternalDS() {
-        this.links = getLinkSet(_links);
+        this.links = getLinkSet(_links);;
+        this.switchIds = this._switches.keySet();
     }
 
     public Map<Pair, Path> startOnAll() {
         Map<Pair, Path> aggregatedPath = new HashMap<Pair, Path>();
-        for (Long l : this.switches.keySet()) {
-            IOFSwitch iofSwitch = this.switches.get(l);
+        constructInternalDS();
+        for (Long l : this.switchIds) {
+            IOFSwitch iofSwitch = this._switches.get(l);
             Map<Pair, Path> pairPathMap = start(iofSwitch);
             aggregatedPath.putAll(pairPathMap);
         }
@@ -46,14 +49,13 @@ public class BellmanFord {
 
     public Map<Pair, Path> start(IOFSwitch iofSwitch) {
         long src = (int) iofSwitch.getId();
-        constructInternalDS();
-        int V = this.switches.size();
+        int V = this.switchIds.size();
         int E = this.links.size();
         Map<Pair, Path> result = new HashMap<Pair, Path>();
         Map<Long, Integer> distMap = new HashMap<Long, Integer>();
         Map<Long, Long> predMap = new HashMap<Long, Long>();
         Map<Long, Link> predLinkMap = new HashMap<Long, Link>();
-        for (Long key : this.switches.keySet()) {
+        for (Long key : this.switchIds) {
             distMap.put(key, Integer.MAX_VALUE);
             predMap.put(key, (long)-1);
         }
@@ -73,7 +75,7 @@ public class BellmanFord {
                 }
             }
         }
-        for (Long switchId : this.switches.keySet()) {
+        for (Long switchId : this.switchIds) {
             if (switchId != src) {
                 long destSwitchId = switchId;
                 Pair pair = new Pair(src, destSwitchId);

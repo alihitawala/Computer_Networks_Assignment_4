@@ -118,7 +118,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
      * @param device information about the host
      */
 	@Override
-	public void deviceAdded(IDevice device) 
+	public void deviceAdded(IDevice device)
 	{
 		Host host = new Host(device, this.floodlightProv);
 		// We only care about a new host if we know its IP
