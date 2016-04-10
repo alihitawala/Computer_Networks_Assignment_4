@@ -59,6 +59,7 @@ public class BellmanFord {
         for (Long key : this.switchIds) {
             distMap.put(key, Integer.MAX_VALUE);
             predMap.put(key, (long)-1);
+            reachable.put(key, false);
         }
         distMap.put(src, 0);
         for (int i = 1; i <= V-1; i++)
