@@ -42,8 +42,10 @@ public class RuleEngine {
         this.switches = s;
         this.links = l;
         pathDiscoveries = new BellmanFord(this.hosts, this.switches, this.links).startOnAll();
+        for (Host destHost : this.hosts) {
+            this.removeRuleForHost(destHost);
+        }
         for (Host srcHost : this.hosts) {
-            this.removeRuleForHost(srcHost);
             this.addPathFromSrcToAllHost(srcHost);
         }
     }
