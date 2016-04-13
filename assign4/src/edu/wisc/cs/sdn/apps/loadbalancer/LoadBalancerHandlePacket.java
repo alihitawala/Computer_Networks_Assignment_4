@@ -72,11 +72,12 @@ public class LoadBalancerHandlePacket {
         int sourceIp = ipv4.getSourceAddress();
         LoadBalancerInstance instance = this.instances.get(ipv4.getDestinationAddress());
         int hostIp = instance.getNextHostIP();
-        System.out.println("\nNEXT HOP ID Obtained:: " + hostIp);
+        System.out.println("\nNEXT HOP ID Obtained:: " + IPv4.fromIPv4Address(hostIp));
         byte[] hostMACAddress = this.loadBalancer.getHostMACAddress(hostIp);
-        System.out.println("\nNEXT HOP MAC ID Obtained:: " + hostMACAddress.toString());
+        System.out.println("\nNEXT HOP MAC ID Obtained:: " + MACAddress.valueOf(hostMACAddress).toString());
         for (IOFSwitch s : switches)
             this.loadBalancerRuleEngine.addReRoutingRule(s, sourceIp, instance, hostIp, hostMACAddress, sourcePort, destinationPort);
+
         SwitchCommands.sendPacket(sw, (short) pktIn.getInPort(), eth);
     }
 
