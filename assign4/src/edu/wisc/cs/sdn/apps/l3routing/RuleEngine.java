@@ -43,32 +43,16 @@ public class RuleEngine {
         this.links = l;
         pathDiscoveries = new BellmanFord(this.hosts, this.switches, this.links).startOnAll();
         for (Host srcHost : this.hosts) {
+            this.removeRuleForHost(srcHost);
             this.addPathFromSrcToAllHost(srcHost);
         }
     }
 
-    public synchronized void applyRuleToRemoveSrcHost(Collection<Host> h, Host srcHost) {
-        this.hosts = h;
-//        this.removePathFromSrcToAllHost(srcHost);
-        for (Host otherSrcHost : this.hosts) {
-            if (!otherSrcHost.equals(srcHost))
-                this.updatePathBetweenHosts(otherSrcHost, srcHost, RULE_TYPE.REMOVE);
-        }
-    }
-
-    public synchronized void applyRuleToAddSrcHost(Collection<Host> h, Host srcHost) {
-        this.hosts = h;
-        this.addPathFromSrcToAllHost(srcHost);
-        for (Host otherSrcHost : this.hosts) {
-            if (!otherSrcHost.equals(srcHost))
-                this.updatePathBetweenHosts(otherSrcHost, srcHost, RULE_TYPE.ADD);
-        }
-    }
-
-    private synchronized void removePathFromSrcToAllHost(Host srcHost) {
-        for (Host destHost : this.hosts) {
-            if (!srcHost.equals(destHost))
-                updatePathBetweenHosts(srcHost, destHost, RULE_TYPE.REMOVE);
+    private void removeRuleForHost(Host srcHost) {
+        int destinationIp = srcHost.getIPv4Address();
+        OFMatch match = this.getMatchCriteriaObject(destinationIp);
+        for (Long switchId : this.switches.keySet()) {
+            SwitchCommands.removeRules(this.switches.get(switchId),L3Routing.table, match);
         }
     }
 
@@ -100,13 +84,7 @@ public class RuleEngine {
     }
 
     private synchronized void applyRuleToDevice(Host destHost, Long switchId, int switchOutputPort, RULE_TYPE ruleType) {
-        OFMatch match = new OFMatch();
-        OFMatchField field1 = new OFMatchField(OFOXMFieldType.ETH_TYPE, Ethernet.TYPE_IPv4);
-        OFMatchField field2 = new OFMatchField(OFOXMFieldType.IPV4_DST, destHost.getIPv4Address());
-        List<OFMatchField> matches = new ArrayList<OFMatchField>();
-        matches.add(field1);
-        matches.add(field2);
-        match.setMatchFields(matches);
+        OFMatch match = this.getMatchCriteriaObject(destHost.getIPv4Address());
         OFActionOutput actionOutput = new OFActionOutput(switchOutputPort);
         List<OFAction> actions = new ArrayList<OFAction>();
         actions.add(actionOutput);
@@ -117,5 +95,16 @@ public class RuleEngine {
             SwitchCommands.installRule(this.switches.get(switchId), L3Routing.table, SwitchCommands.DEFAULT_PRIORITY, match, instructions);
         else
             SwitchCommands.removeRules(this.switches.get(switchId), L3Routing.table, match);
+    }
+
+    private OFMatch getMatchCriteriaObject(int destinationIp) {
+        OFMatch match = new OFMatch();
+        OFMatchField field1 = new OFMatchField(OFOXMFieldType.ETH_TYPE, Ethernet.TYPE_IPv4);
+        OFMatchField field2 = new OFMatchField(OFOXMFieldType.IPV4_DST, destinationIp);
+        List<OFMatchField> matches = new ArrayList<OFMatchField>();
+        matches.add(field1);
+        matches.add(field2);
+        match.setMatchFields(matches);
+        return match;
     }
 }
