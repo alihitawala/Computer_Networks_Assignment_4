@@ -31,6 +31,8 @@ public class LoadBalancerRuleEngine {
     private static final short MIN_PRIORITY = 1;
     private static final short DEFAULT_PRIORITY = 5;
     private static final short MAX_PRIORITY = 10;
+    private static final short HARD_TIMEOUT_RULES = 0;
+    private static final short IDLE_TIMEOUT_RULES = 20;
 
     // Interface to the logging system
     private static Logger log = LoggerFactory.getLogger(MODULE_NAME);
@@ -118,7 +120,7 @@ public class LoadBalancerRuleEngine {
         List<OFInstruction> instructions = new ArrayList<OFInstruction>();
         instructions.add(ofInstructionApplyActions);
         instructions.add(ofInstructionGotoTable);
-        SwitchCommands.installRule(sw, this.table, MAX_PRIORITY, match, instructions);
+        SwitchCommands.installRule(sw, this.table, MAX_PRIORITY, match, instructions, HARD_TIMEOUT_RULES, IDLE_TIMEOUT_RULES);
     }
 
     private void addOutgoingReRoutingRule(IOFSwitch sw, int sourceIp, LoadBalancerInstance instance, int hostIp, byte[] hostMACAddress, short sourcePort, short destinationPort) {
@@ -148,7 +150,7 @@ public class LoadBalancerRuleEngine {
         List<OFInstruction> instructions = new ArrayList<OFInstruction>();
         instructions.add(ofInstructionApplyActions);
         instructions.add(ofInstructionGotoTable);
-        SwitchCommands.installRule(sw, this.table, MAX_PRIORITY, match, instructions);
+        SwitchCommands.installRule(sw, this.table, MAX_PRIORITY, match, instructions, HARD_TIMEOUT_RULES, IDLE_TIMEOUT_RULES);
     }
 
     public void addDefaultRule(IOFSwitch sw) {
