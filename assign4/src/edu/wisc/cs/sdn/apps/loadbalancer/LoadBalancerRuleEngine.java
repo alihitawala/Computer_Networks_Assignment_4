@@ -28,6 +28,9 @@ import java.util.Map;
 public class LoadBalancerRuleEngine {
 
     public static final String MODULE_NAME = LoadBalancerHandlePacket.class.getSimpleName();
+    private static final short MIN_PRIORITY = 1;
+    private static final short DEFAULT_PRIORITY = 5;
+    private static final short MAX_PRIORITY = 10;
 
     // Interface to the logging system
     private static Logger log = LoggerFactory.getLogger(MODULE_NAME);
@@ -57,7 +60,7 @@ public class LoadBalancerRuleEngine {
             OFInstructionApplyActions applyActions = new OFInstructionApplyActions(actions);
             List<OFInstruction> instructions = new ArrayList<OFInstruction>();
             instructions.add(applyActions);
-            SwitchCommands.installRule(sw, this.table, SwitchCommands.DEFAULT_PRIORITY, match, instructions);
+            SwitchCommands.installRule(sw, this.table, DEFAULT_PRIORITY, match, instructions);
         }
     }
 
@@ -78,7 +81,7 @@ public class LoadBalancerRuleEngine {
             OFInstructionApplyActions applyActions = new OFInstructionApplyActions(actions);
             List<OFInstruction> instructions = new ArrayList<OFInstruction>();
             instructions.add(applyActions);
-            SwitchCommands.installRule(sw, this.table, SwitchCommands.DEFAULT_PRIORITY, match, instructions);
+            SwitchCommands.installRule(sw, this.table, DEFAULT_PRIORITY, match, instructions);
         }
 
     }
@@ -91,18 +94,18 @@ public class LoadBalancerRuleEngine {
     private void addIncomingReRoutingRule(IOFSwitch sw, int sourceIp, LoadBalancerInstance instance, int hostIp, byte[] hostMACAddress, short sourcePort, short destinationPort) {
         OFMatch match = new OFMatch();
         List<OFMatchField> matches = new ArrayList<OFMatchField>();
-        OFMatchField field1 = new OFMatchField(OFOXMFieldType.ETH_TYPE, Ethernet.TYPE_IPv4);
-        matches.add(field1);
+        OFMatchField ethernetType = new OFMatchField(OFOXMFieldType.ETH_TYPE, Ethernet.TYPE_IPv4);
+        matches.add(ethernetType);
         OFMatchField srcIp = new OFMatchField(OFOXMFieldType.IPV4_SRC, hostIp);
         matches.add(srcIp);
-        OFMatchField field2 = new OFMatchField(OFOXMFieldType.IPV4_DST, sourceIp);
-        matches.add(field2);
+        OFMatchField destinationIp = new OFMatchField(OFOXMFieldType.IPV4_DST, sourceIp);
+        matches.add(destinationIp);
         OFMatchField protocol = new OFMatchField(OFOXMFieldType.IP_PROTO, IPv4.PROTOCOL_TCP);
         matches.add(protocol);
-        OFMatchField field3 = new OFMatchField(OFOXMFieldType.TCP_SRC, destinationPort);
-        matches.add(field3);
-        OFMatchField field4 = new OFMatchField(OFOXMFieldType.TCP_DST, sourcePort);
-        matches.add(field4);
+        OFMatchField destPort = new OFMatchField(OFOXMFieldType.TCP_SRC, destinationPort);
+        matches.add(destPort);
+        OFMatchField srcPort = new OFMatchField(OFOXMFieldType.TCP_DST, sourcePort);
+        matches.add(srcPort);
         match.setMatchFields(matches);
 
         OFActionSetField setFieldMac = new OFActionSetField(OFOXMFieldType.ETH_SRC, instance.getVirtualMAC());
@@ -115,7 +118,7 @@ public class LoadBalancerRuleEngine {
         List<OFInstruction> instructions = new ArrayList<OFInstruction>();
         instructions.add(ofInstructionApplyActions);
         instructions.add(ofInstructionGotoTable);
-        SwitchCommands.installRule(sw, this.table, SwitchCommands.MAX_PRIORITY, match, instructions);
+        SwitchCommands.installRule(sw, this.table, MAX_PRIORITY, match, instructions);
     }
 
     private void addOutgoingReRoutingRule(IOFSwitch sw, int sourceIp, LoadBalancerInstance instance, int hostIp, byte[] hostMACAddress, short sourcePort, short destinationPort) {
@@ -145,7 +148,7 @@ public class LoadBalancerRuleEngine {
         List<OFInstruction> instructions = new ArrayList<OFInstruction>();
         instructions.add(ofInstructionApplyActions);
         instructions.add(ofInstructionGotoTable);
-        SwitchCommands.installRule(sw, this.table, SwitchCommands.MAX_PRIORITY, match, instructions);
+        SwitchCommands.installRule(sw, this.table, MAX_PRIORITY, match, instructions);
     }
 
     public void addDefaultRule(IOFSwitch sw) {
@@ -153,6 +156,6 @@ public class LoadBalancerRuleEngine {
         OFInstructionGotoTable ofInstructionGotoTable = new OFInstructionGotoTable(L3Routing.table);
         List<OFInstruction> instructions = new ArrayList<OFInstruction>();
         instructions.add(ofInstructionGotoTable);
-        SwitchCommands.installRule(sw, this.table, SwitchCommands.MIN_PRIORITY, match, instructions);
+        SwitchCommands.installRule(sw, this.table, MIN_PRIORITY, match, instructions);
     }
 }

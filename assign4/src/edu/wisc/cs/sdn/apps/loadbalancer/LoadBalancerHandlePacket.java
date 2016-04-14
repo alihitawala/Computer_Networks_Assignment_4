@@ -77,8 +77,6 @@ public class LoadBalancerHandlePacket {
         System.out.println("\nNEXT HOP MAC ID Obtained:: " + MACAddress.valueOf(hostMACAddress).toString());
         for (IOFSwitch s : switches)
             this.loadBalancerRuleEngine.addReRoutingRule(s, sourceIp, instance, hostIp, hostMACAddress, sourcePort, destinationPort);
-
-        SwitchCommands.sendPacket(sw, (short) pktIn.getInPort(), eth);
     }
 
     public boolean isARPPacket(Ethernet eth) {
