@@ -144,6 +144,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		Host host = this.knownHosts.get(device);
 		if (null == host)
 		{ return; }
+		this.ruleEngine.removeRuleForHost(host);
 		this.knownHosts.remove(device);
 		
 		log.info(String.format("Host %s is no longer attached to a switch",

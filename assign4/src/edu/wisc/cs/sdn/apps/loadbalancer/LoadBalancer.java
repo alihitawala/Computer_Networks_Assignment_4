@@ -159,7 +159,7 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 				pktIn.getPacketData().length);
 		if (this.loadBalancerHandlePacket.isARPPacket(ethPkt))
 			this.loadBalancerHandlePacket.handleARPPacket(pktIn, ethPkt, sw);
-		if (this.loadBalancerHandlePacket.isIPPacket(ethPkt))
+		else if (this.loadBalancerHandlePacket.isIPPacket(ethPkt))
 			this.loadBalancerHandlePacket.handleIPPacket(pktIn, ethPkt, sw, this.switches);
 		/*********************************************************************/
 		/* TODO: Send an ARP reply for ARP requests for virtual IPs; for TCP */

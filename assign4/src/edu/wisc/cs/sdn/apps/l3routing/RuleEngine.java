@@ -50,8 +50,8 @@ public class RuleEngine {
         }
     }
 
-    private void removeRuleForHost(Host srcHost) {
-        int destinationIp = srcHost.getIPv4Address();
+    public void removeRuleForHost(Host destHost) {
+        int destinationIp = destHost.getIPv4Address();
         OFMatch match = this.getMatchCriteriaObject(destinationIp);
         for (Long switchId : this.switches.keySet()) {
             SwitchCommands.removeRules(this.switches.get(switchId),L3Routing.table, match);

@@ -44,6 +44,8 @@ public class LoadBalancerHandlePacket {
         log.info(String.format("Received ARP request for %s from %s",
                 IPv4.fromIPv4Address(targetIP),
                 MACAddress.valueOf(arp.getSenderHardwareAddress()).toString()));
+        if (!this.instances.containsKey(targetIP))
+            return;
         LoadBalancerInstance loadBalancerInstance = instances.get(targetIP);
         byte[] deviceMac = loadBalancerInstance.getVirtualMAC();
         arp.setOpCode(ARP.OP_REPLY);
